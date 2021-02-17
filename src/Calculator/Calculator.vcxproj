@@ -203,6 +203,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)..\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <PreprocessorDefinitions>_UNICODE;UNICODE;%(PreprocessorDefinitions);DISABLE_XAML_GENERATED_MAIN</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -259,6 +260,7 @@
     <ClInclude Include="Controls\OperatorPanelListView.h" />
     <ClInclude Include="Controls\OperatorPanelButton.h" />
     <ClInclude Include="Controls\EquationTextBox.h" />
+    <ClInclude Include="Program.h" />
     <ClInclude Include="Utils\DispatcherTimerDelayer.h" />
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.xaml.h">
@@ -340,7 +342,6 @@
     <ClInclude Include="Views\UnitConverter.xaml.h">
       <DependentUpon>Views\UnitConverter.xaml</DependentUpon>
     </ClInclude>
-    <ClInclude Include="WindowFrameService.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml">
@@ -421,6 +422,7 @@
     <ClCompile Include="Controls\OperatorPanelListView.cpp" />
     <ClCompile Include="Controls\OperatorPanelButton.cpp" />
     <ClCompile Include="Controls\EquationTextBox.cpp" />
+    <ClCompile Include="Program.cpp" />
     <ClCompile Include="Utils\DispatcherTimerDelayer.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -508,7 +510,6 @@
     <ClCompile Include="Views\UnitConverter.xaml.cpp">
       <DependentUpon>Views\UnitConverter.xaml</DependentUpon>
     </ClCompile>
-    <ClCompile Include="WindowFrameService.cpp" />
   </ItemGroup>
   <ItemGroup>
     <PRIResource Include="Resources\af-ZA\CEngineStrings.resw" />

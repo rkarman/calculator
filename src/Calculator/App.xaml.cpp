@@ -83,57 +83,21 @@ App::App()
 #endif
 }
 
-void App::AddWindowToMap(_In_ WindowFrameService ^ frameService)
+void App::IsPhoneStyleDevice()
 {
-    reader_writer_lock::scoped_lock lock(m_windowsMapLock);
-    m_secondaryWindows[frameService->GetViewId()] = frameService;
-    TraceLogger::GetInstance()->UpdateWindowCount(m_secondaryWindows.size());
-}
-
-WindowFrameService ^ App::GetWindowFromMap(int viewId)
-{
-    reader_writer_lock::scoped_lock_read lock(m_windowsMapLock);
-    auto windowMapEntry = m_secondaryWindows.find(viewId);
-    if (windowMapEntry != m_secondaryWindows.end())
+    // Check to see if we are on a Phone style device. Note, in Continuum mode the interaction mode is Keyboard
+    // and we want desktop style behavior there, so we have to check for both user interaction mode Touch and
+    // the existence of hardware buttons.
+    if ((UIViewSettings::GetForCurrentView()->UserInteractionMode == UserInteractionMode::Touch)
+        && (Windows::Foundation::Metadata::ApiInformation::IsTypePresent("Windows.Phone.UI.Input.HardwareButtons")))
     {
-        return windowMapEntry->second;
-    }
-    return nullptr;
-}
-
-void App::RemoveWindowFromMap(int viewId)
-{
-    reader_writer_lock::scoped_lock lock(m_windowsMapLock);
-    auto iter = m_secondaryWindows.find(viewId);
-    assert(iter != m_secondaryWindows.end() && "Window does not exist in the list");
-    m_secondaryWindows.erase(viewId);
-}
-
-void App::RemoveWindow(_In_ WindowFrameService ^ frameService)
-{
-    // Shell does not allow killing the main window.
-    if (m_mainViewId != frameService->GetViewId())
-    {
-        HandleViewReleaseAndRemoveWindowFromMap(frameService);
+        // If we're on a phone style device we create a mutex that other activations will
+        // check for. As long as the mutex exists a new activation will redirect to this app instance
+        // instead of creating a new one.
+        m_singleInstanceMutex = CreateMutexW(NULL, true, L"SingleInstanceCalculator");
     }
 }
 
-task<void> App::HandleViewReleaseAndRemoveWindowFromMap(_In_ WindowFrameService ^ frameService)
-{
-    WeakReference weak(this);
-
-    // Unregister the event handler of the Main Page
-    auto frame = safe_cast<Frame ^>(Window::Current->Content);
-    auto mainPage = safe_cast<MainPage ^>(frame->Content);
-    mainPage->UnregisterEventHandlers();
-
-    return frameService->HandleViewRelease().then(
-        [weak, frameService]() {
-            auto that = weak.Resolve<App>();
-            that->RemoveWindowFromMap(frameService->GetViewId());
-        },
-        task_continuation_context::use_arbitrary());
-}
 
 #pragma optimize("", off) // Turn off optimizations to work around coroutine optimization bug
 task<void> App::SetupJumpList()
@@ -167,15 +131,6 @@ task<void> App::SetupJumpList()
     }
 };
 #pragma optimize("", on)
-
-void App::RemoveSecondaryWindow(_In_ WindowFrameService ^ frameService)
-{
-    // Shell does not allow killing the main window.
-    if (m_mainViewId != frameService->GetViewId())
-    {
-        RemoveWindowFromMap(frameService->GetViewId());
-    }
-}
 
 Frame ^ App::CreateFrame()
 {
@@ -223,36 +178,14 @@ void App::OnAppLaunch(IActivatedEventArgs ^ args, String ^ argument)
 
     ApplicationView ^ appView = ApplicationView::GetForCurrentView();
     ApplicationDataContainer ^ localSettings = ApplicationData::Current->LocalSettings;
-    // For very first launch, set the size of the calc as size of the default standard mode
-    if (!localSettings->Values->HasKey(L"VeryFirstLaunch"))
-    {
-        localSettings->Values->Insert(ref new String(L"VeryFirstLaunch"), false);
-        appView->SetPreferredMinSize(minWindowSize);
-        appView->TryResizeView(minWindowSize);
-    }
-    else
-    {
-        appView->PreferredLaunchWindowingMode = ApplicationViewWindowingMode::Auto;
-    }
+    // Set the size of the calc as size of the default standard mode
+    appView->SetPreferredMinSize(minWindowSize);
+    appView->TryResizeView(minWindowSize);
 
     // Do not repeat app initialization when the Window already has content,
     // just ensure that the window is active
     if (rootFrame == nullptr)
     {
-        if (!Windows::Foundation::Metadata::ApiInformation::IsTypePresent("Windows.Phone.UI.Input.HardwareButtons")) // PC Family
-        {
-            // Disable the system view activation policy during the first launch of the app
-            // only for PC family devices and not for phone family devices
-            try
-            {
-                ApplicationViewSwitcher::DisableSystemViewActivationPolicy();
-            }
-            catch (Exception ^ e)
-            {
-                // Log that DisableSystemViewActionPolicy didn't work
-            }
-        }
-
         // Create a Frame to act as the navigation context
         rootFrame = App::CreateFrame();
 
@@ -267,139 +200,29 @@ void App::OnAppLaunch(IActivatedEventArgs ^ args, String ^ argument)
         }
 
         SetMinWindowSizeAndActivate(rootFrame, minWindowSize);
-        m_mainViewId = ApplicationView::GetForCurrentView()->Id;
-        AddWindowToMap(WindowFrameService::CreateNewWindowFrameService(rootFrame, false, weak));
+        IsPhoneStyleDevice();
     }
     else
     {
-        // For first launch, LaunchStart is logged in constructor, this is for subsequent launches.
-
-        // !Phone check is required because even in continuum mode user interaction mode is Mouse not Touch
-        if ((UIViewSettings::GetForCurrentView()->UserInteractionMode == UserInteractionMode::Mouse)
-            && (!Windows::Foundation::Metadata::ApiInformation::IsTypePresent("Windows.Phone.UI.Input.HardwareButtons")))
+        if (rootFrame->Content == nullptr)
         {
-            // If the pre-launch hasn't happened then allow for the new window/view creation
-            if (!m_preLaunched)
+            // When the navigation stack isn't restored navigate to the first page,
+            // configuring the new page by passing required information as a navigation
+            // parameter
+            if (!rootFrame->Navigate(MainPage::typeid, argument))
             {
-                auto newCoreAppView = CoreApplication::CreateNewView();
-                newCoreAppView->Dispatcher->RunAsync(
-                    CoreDispatcherPriority::Normal, ref new DispatchedHandler([args, argument, minWindowSize, weak]() {
-                        auto that = weak.Resolve<App>();
-                        if (that != nullptr)
-                        {
-                            auto rootFrame = App::CreateFrame();
-                            SetMinWindowSizeAndActivate(rootFrame, minWindowSize);
-
-                            if (!rootFrame->Navigate(MainPage::typeid, argument))
-                            {
-                                // We couldn't navigate to the main page, kill the app so we have a good
-                                // stack to debug
-                                throw std::bad_exception();
-                            }
-
-                            auto frameService = WindowFrameService::CreateNewWindowFrameService(rootFrame, true, weak);
-                            that->AddWindowToMap(frameService);
-
-                            auto dispatcher = CoreWindow::GetForCurrentThread()->Dispatcher;
-                            auto safeFrameServiceCreation = std::make_shared<SafeFrameWindowCreation>(frameService, that);
-                            int newWindowId = ApplicationView::GetApplicationViewIdForWindow(CoreWindow::GetForCurrentThread());
-
-                            ActivationViewSwitcher ^ activationViewSwitcher;
-                            auto activateEventArgs = dynamic_cast<IViewSwitcherProvider ^>(args);
-                            if (activateEventArgs != nullptr)
-                            {
-                                activationViewSwitcher = activateEventArgs->ViewSwitcher;
-                            }
-
-                            if (activationViewSwitcher != nullptr)
-                            {
-                                activationViewSwitcher->ShowAsStandaloneAsync(newWindowId, ViewSizePreference::Default);
-                                safeFrameServiceCreation->SetOperationSuccess(true);
-                            }
-                            else
-                            {
-                                auto activatedEventArgs = dynamic_cast<IApplicationViewActivatedEventArgs ^>(args);
-                                if ((activatedEventArgs != nullptr) && (activatedEventArgs->CurrentlyShownApplicationViewId != 0))
-                                {
-                                    create_task(ApplicationViewSwitcher::TryShowAsStandaloneAsync(
-                                                    frameService->GetViewId(),
-                                                    ViewSizePreference::Default,
-                                                    activatedEventArgs->CurrentlyShownApplicationViewId,
-                                                    ViewSizePreference::Default))
-                                        .then(
-                                            [safeFrameServiceCreation](bool viewShown) {
-                                                // SafeFrameServiceCreation is used to automatically remove the frame
-                                                // from the list of frames if something goes bad.
-                                                safeFrameServiceCreation->SetOperationSuccess(viewShown);
-                                            },
-                                            task_continuation_context::use_current());
-                                }
-                            }
-                        }
-                    }));
+                // We couldn't navigate to the main page,
+                // kill the app so we have a good stack to debug
+                throw std::bad_exception();
             }
-            else
-            {
-                ActivationViewSwitcher ^ activationViewSwitcher;
-                auto activateEventArgs = dynamic_cast<IViewSwitcherProvider ^>(args);
-                if (activateEventArgs != nullptr)
-                {
-                    activationViewSwitcher = activateEventArgs->ViewSwitcher;
-                }
-
-                if (activationViewSwitcher != nullptr)
-                {
-                    activationViewSwitcher->ShowAsStandaloneAsync(
-                        ApplicationView::GetApplicationViewIdForWindow(CoreWindow::GetForCurrentThread()), ViewSizePreference::Default);
-                }
-                else
-                {
-                    TraceLogger::GetInstance()->LogError(ViewMode::None, L"App::OnAppLaunch", L"Null_ActivationViewSwitcher");
-                }
-            }
-            // Set the preLaunched flag to false
-            m_preLaunched = false;
         }
-        else // for touch devices
+        if (ApplicationView::GetForCurrentView()->ViewMode != ApplicationViewMode::CompactOverlay)
         {
-            if (rootFrame->Content == nullptr)
-            {
-                // When the navigation stack isn't restored navigate to the first page,
-                // configuring the new page by passing required information as a navigation
-                // parameter
-                if (!rootFrame->Navigate(MainPage::typeid, argument))
-                {
-                    // We couldn't navigate to the main page,
-                    // kill the app so we have a good stack to debug
-                    throw std::bad_exception();
-                }
-            }
-            if (ApplicationView::GetForCurrentView()->ViewMode != ApplicationViewMode::CompactOverlay)
-            {
-                if (!Windows::Foundation::Metadata::ApiInformation::IsTypePresent("Windows.Phone.UI.Input.HardwareButtons"))
-                {
-                    // for tablet mode: since system view activation policy is disabled so do ShowAsStandaloneAsync if activationViewSwitcher exists in
-                    // activationArgs
-                    ActivationViewSwitcher ^ activationViewSwitcher;
-                    auto activateEventArgs = dynamic_cast<IViewSwitcherProvider ^>(args);
-                    if (activateEventArgs != nullptr)
-                    {
-                        activationViewSwitcher = activateEventArgs->ViewSwitcher;
-                    }
-                    if (activationViewSwitcher != nullptr)
-                    {
-                        auto viewId = safe_cast<IApplicationViewActivatedEventArgs ^>(args)->CurrentlyShownApplicationViewId;
-                        if (viewId != 0)
-                        {
-                            activationViewSwitcher->ShowAsStandaloneAsync(viewId);
-                        }
-                    }
-                }
-                // Ensure the current window is active
-                Window::Current->Activate();
-            }
+            // Ensure the current window is active
+            Window::Current->Activate();
         }
     }
+
 }
 
 void App::SetMinWindowSizeAndActivate(Frame ^ rootFrame, Size minWindowSize)

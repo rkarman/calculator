@@ -9,7 +9,6 @@
 #pragma once
 
 #include "App.g.h"
-#include "WindowFrameService.h"
 
 namespace CalculatorApp
 {
@@ -30,8 +29,6 @@ namespace CalculatorApp
         virtual void OnActivated(Windows::ApplicationModel::Activation::IActivatedEventArgs ^ args) override;
 
     internal:
-        void RemoveWindow(_In_ WindowFrameService ^ frameService);
-        void RemoveSecondaryWindow(_In_ WindowFrameService ^ frameService);
 
     private:
         static Windows::UI::Xaml::Controls::Frame ^ CreateFrame();
@@ -41,50 +38,13 @@ namespace CalculatorApp
         void DismissedEventHandler(Windows::ApplicationModel::Activation::SplashScreen ^ sender, Platform::Object ^ e);
         void RegisterDependencyProperties();
         void OnSuspending(Platform::Object ^ sender, Windows::ApplicationModel::SuspendingEventArgs ^ args);
+        void IsPhoneStyleDevice();
 
-
-        class SafeFrameWindowCreation final
-        {
-        public:
-            SafeFrameWindowCreation(_In_ WindowFrameService ^ frameService, App ^ parent)
-                : m_frameService(frameService)
-                , m_frameOpenedInWindow(false)
-                , m_parent(parent)
-            {
-            }
-
-            void SetOperationSuccess(bool success)
-            {
-                m_frameOpenedInWindow = success;
-            }
-
-            ~SafeFrameWindowCreation()
-            {
-                if (!m_frameOpenedInWindow)
-                {
-                    // Close the window as the navigation to the window didn't succeed
-                    // and this is not visible to the user.
-                    m_parent->RemoveWindowFromMap(m_frameService->GetViewId());
-                }
-            }
-
-        private:
-            WindowFrameService ^ m_frameService;
-            bool m_frameOpenedInWindow;
-            App ^ m_parent;
-        };
 
     private:
-        concurrency::reader_writer_lock m_windowsMapLock;
-        std::unordered_map<int, WindowFrameService ^> m_secondaryWindows;
-
         concurrency::task<void> SetupJumpList();
-        concurrency::task<void> HandleViewReleaseAndRemoveWindowFromMap(_In_ WindowFrameService ^ frameService);
-        void AddWindowToMap(_In_ WindowFrameService ^ frameService);
-        WindowFrameService ^ GetWindowFromMap(int viewId);
-        void RemoveWindowFromMap(int viewId);
-        int m_mainViewId;
         bool m_preLaunched;
+        HANDLE m_singleInstanceMutex;
 
         Windows::UI::Xaml::Controls::Primitives::Popup ^ m_aboutPopup;
     };
