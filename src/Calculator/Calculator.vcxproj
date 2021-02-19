@@ -140,7 +140,6 @@
       <AdditionalIncludeDirectories>$(SolutionDir)..\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
@@ -150,7 +149,6 @@
       <AdditionalIncludeDirectories>$(SolutionDir)..\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|ARM'">
@@ -160,7 +158,6 @@
       <AdditionalIncludeDirectories>$(SolutionDir)..\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>WindowsApp.lib;$(VC_ReferencesPath_VC_ARM)\pgort.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -173,7 +170,6 @@
       <AdditionalIncludeDirectories>$(SolutionDir)..\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>WindowsApp.lib;$(VC_ReferencesPath_VC_ARM)\pgort.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -186,7 +182,6 @@
       <AdditionalIncludeDirectories>$(SolutionDir)..\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN</PreprocessorDefinitions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -196,7 +191,6 @@
       <AdditionalIncludeDirectories>$(SolutionDir)..\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>WindowsApp.lib;$(VC_ReferencesPath_VC_x86)\pgort.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -219,7 +213,6 @@
       <AdditionalIncludeDirectories>$(SolutionDir)..\src\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
-      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <AdditionalDependencies>WindowsApp.lib;$(VC_ReferencesPath_VC_x64)\pgort.lib;%(AdditionalDependencies)</AdditionalDependencies>
